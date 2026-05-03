@@ -1,43 +1,83 @@
-const express = require('express');
-const cors    = require('cors');
-const app     = express();
+import express from 'express';
+import cors from 'cors';
+import OpenAI from 'openai';
+
+const app = express();
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 app.use(cors());
 app.use(express.json());
 
-app.get('/', (req, res) => res.json({ status: 'ok' }));
+// ─────────────────────────────────────────────
+// SYSTEM PROMPTS
+// ─────────────────────────────────────────────
+const PROMPTS = {
 
+  debias: `Your task is to help the user respond to a hypothetical scenario presented in a randomized experimental survey. Drawing on the most current cognitive and behavioral science, first assess whether any bias is at play. Only if you detect a bias, use a debiasing strategy to prevent the user from making mistakes caused by phenomena such as bias, noise, selective attention, selective memory, belief instability, multimodality of beliefs, heterogeneity of beliefs, and related phenomena. NO markdown. <75 words.`,
+
+  base: `Your task is to help the user respond to a hypothetical scenario presented in a randomized experimental survey. STRICTLY no markdown. STRICTLY <75 words.`,
+
+  debias_nn: `Your task is to help the user respond to a hypothetical scenario presented in a randomized experimental survey. Drawing on the most current cognitive and behavioral science, first assess whether any bias is at play. Only if you detect a bias, use a debiasing strategy. If the response is objectively deterministic, provide the answer. If not, DO NOT provide the answer and DO NOT include numbers. NO markdown. <75 words.`,
+
+  default: `Your task is to help the user respond to a hypothetical scenario presented in a randomized experimental survey. NO markdown. <75 words.`
+};
+
+// ─────────────────────────────────────────────
+// HEALTH CHECK
+// ─────────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// ─────────────────────────────────────────────
+// CHAT ENDPOINT
+// ─────────────────────────────────────────────
 app.post('/chat', async (req, res) => {
-  const { messages } = req.body;
-  if (!Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
+
+  const { messages, condition } = req.body;
+
+  if (!Array.isArray(messages)) {
+    return res.status(400).json({ error: 'messages array required' });
+  }
+
+  const systemPrompt = PROMPTS[condition] || PROMPTS.default;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': 'Bearer ' + process.env.OPENAI_API_KEY
-      },
-      body: JSON.stringify({
-        model:    process.env.OPENAI_MODEL    || 'gpt-4o-2024-05-13',
-        messages: [
-          { role: 'system', content: process.env.SYSTEM_PROMPT || 'You are a helpful assistant.' },
-          ...messages
-        ]
-      })
+    const response = await client.responses.create({
+      model: process.env.OPENAI_MODEL || "gpt-5.5-2026-04-23",
+
+      // 🔴 CHIAVE: livello più alto
+      instructions: systemPrompt,
+
+      // conversazione (immutata dal tuo frontend)
+      input: messages,
+
+      // controlli utili
+      reasoning: { effort: "low" },
+      text: { verbosity: "low" },
+
+      // 🔴 IMPORTANTE per ricerca / privacy
+      store: false
     });
 
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      return res.status(response.status).json({ error: err.error?.message || 'OpenAI error' });
-    }
+    const reply = response.output_text || '';
 
-    const data = await response.json();
-    res.json({ reply: data.choices[0].message.content });
+    res.json({ reply });
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(process.env.PORT || 3000, () => console.log('Proxy ready'));
+// ─────────────────────────────────────────────
+// START
+// ─────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log('Proxy ready on port ' + PORT);
+});
