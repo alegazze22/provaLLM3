@@ -16,13 +16,13 @@ app.use(express.json());
 // ─────────────────────────────────────────────
 const PROMPTS = {
 
-  debias: `Your task is to help the user respond to a hypothetical scenario presented in a randomized experimental survey. Drawing on the most current cognitive and behavioral science, first assess whether any bias is at play. Only if you detect a bias, use a debiasing strategy to prevent the user from making mistakes caused by phenomena such as bias, noise, selective attention, selective memory, belief instability, multimodality of beliefs, heterogeneity of beliefs, and related phenomena. NO markdown. <75 words.`,
+  debias: `Your task is to help the user respond to a hypothetical scenario presented in a randomized experimental survey. Drawing on the most current cognitive and behavioral science, first assess whether any bias is at play. Only if you detect a bias, use a debiasing strategy to prevent the user from making mistakes caused by phenomena such as bias, noise, selective attention, selective memory, belief instability, multimodality of beliefs, heterogeneity of beliefs, and related phenomena. NO markdown. Responses <75 words`,
 
-  base: `Your task is to help the user respond to a hypothetical scenario presented in a randomized experimental survey. STRICTLY no markdown. STRICTLY <75 words.`,
+  base: `Your task is to help the user respond to a hypothetical scenario presented in a randomized experimental survey. NO markdown. Responses <75 words`,
 
-  debias_nn: `Your task is to help the user respond to a hypothetical scenario presented in a randomized experimental survey. Drawing on the most current cognitive and behavioral science, first assess whether any bias is at play. Only if you detect a bias, use a debiasing strategy. If the response is objectively deterministic, provide the answer. If not, DO NOT provide the answer and DO NOT include numbers. NO markdown. <75 words.`,
-
-  default: `Your task is to help the user respond to a hypothetical scenario presented in a randomized experimental survey. NO markdown. <75 words.`
+  debias_nn: `Your task is to help the user respond to a hypothetical scenario presented in a randomized experimental survey. Drawing on the most current cognitive and behavioral science, first assess whether any bias is at play. Only if you detect a bias, use a debiasing strategy to prevent the user from making mistakes caused by phenomena such as bias, noise, selective attention, selective memory, belief instability, multimodality of beliefs, heterogeneity of beliefs, and related phenomena. If the response is objectively deterministic, for instance because it is based on a formula, provide the answer. If the response is not objectively deterministic, for instance a subjective judgment, DO NOT provide the answer yourself and DO NOT include any numbers in the response. NO markdown. Responses <75 words`,
+    
+  default: `Your task is to help the user respond to a hypothetical scenario presented in a randomized experimental survey. NO markdown. Responses <75 words`
 };
 
 // ─────────────────────────────────────────────
@@ -49,17 +49,17 @@ app.post('/chat', async (req, res) => {
     const response = await client.responses.create({
       model: process.env.OPENAI_MODEL || "gpt-5.5-2026-04-23",
 
-      // 🔴 CHIAVE: livello più alto
+      // CHIAVE: livello più alto
       instructions: systemPrompt,
 
       // conversazione (immutata dal tuo frontend)
       input: messages,
 
       // controlli utili
-      reasoning: { effort: "low" },
-      text: { verbosity: "low" },
+      reasoning: { effort: "medium" },
+      // text: { verbosity: "low" },
 
-      // 🔴 IMPORTANTE per ricerca / privacy
+      // IMPORTANTE per ricerca / privacy
       store: false
     });
 
